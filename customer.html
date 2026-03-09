@@ -5,34 +5,45 @@
   <title>Customer Ledger - ANGH</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family:'Segoe UI',sans-serif; margin:0; background:#f5f5f5; color:#333; padding:16px; padding-bottom:80px; }
-    header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; font-size:1.2em; font-weight:bold; margin-bottom:10px; }
-    .back-btn { background:#444; color:white; border:none; padding:6px 10px; font-size:0.9em; border-radius:6px; cursor:pointer; }
+    :root{
+      --primary-color:#5e35b1;
+      --accent-color:#388e3c;
+      --debit-color:#d32f2f;
+      --bg-color:#f5f5f5;
+      --card-bg:#ffffff;
+      --text-color:#333;
+      --shadow:rgba(0,0,0,0.1);
+    }
+    body { font-family:'Segoe UI',sans-serif; margin:0; background:var(--bg-color); color:var(--text-color); padding:16px; padding-bottom:80px; }
+    header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; font-size:1.2em; font-weight:bold; margin-bottom:16px; padding:12px 16px; background:var(--primary-color); color:white; border-radius:8px; }
+    .back-btn { background:var(--primary-color); color:white; border:none; padding:8px 14px; font-size:0.95em; border-radius:6px; cursor:pointer; box-shadow:0 2px 4px var(--shadow); }
+    .back-btn:hover { background:#4a148c; }
     .balance { font-weight:bold; }
-    .balance.green { color:green; }
-    .balance.red { color:red; }
-    .entry { background:white; padding:12px; margin:10px 0; border-radius:6px; display:flex; justify-content:space-between; align-items:center; }
-    .credit { color:green; }
-    .debit { color:red; }
+    .balance.green { color:var(--accent-color); }
+    .balance.red { color:var(--debit-color); }
+    .entry { background:var(--card-bg); padding:12px; margin:10px 0; border-radius:6px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 6px var(--shadow); }
+    .credit { color:var(--accent-color); }
+    .debit { color:var(--debit-color); }
     .buttons { display:flex; gap:8px; }
     button { padding:6px 10px; font-size:0.9em; border:none; border-radius:6px; cursor:pointer; }
     .edit-btn { background:#1976d2; color:white; }
     .delete-btn { background:#d32f2f; color:white; }
-    .export-btn { background:#388e3c; color:white; padding:6px 12px; font-size:0.9em; border-radius:6px; margin:10px; cursor:pointer; }
+    .export-btn { background:var(--accent-color); color:white; padding:8px 14px; font-size:0.95em; border-radius:6px; margin:0 10px; cursor:pointer; }
     .export-btn:hover { background:#2e7d32; }
-    .bottom-bar { position:fixed; bottom:0; left:0; width:100%; display:flex; justify-content:space-around; padding:12px; background:white; box-shadow:0 -2px 5px rgba(0,0,0,0.1); }
+    .bottom-bar { position:fixed; bottom:0; left:0; width:100%; display:flex; justify-content:space-around; padding:12px; background:var(--card-bg); box-shadow:0 -2px 5px var(--shadow); }
     .bottom-bar button { width:45%; padding:14px 0; font-size:1em; border-radius:30px; }
-    .credit-btn { background:green; color:white; }
-    .debit-btn { background:red; color:white; }
+    .credit-btn { background:var(--accent-color); color:white; }
+    .debit-btn { background:var(--debit-color); color:white; }
     .modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:999; }
-    .modal-content { background:white; padding:24px; border-radius:10px; width:90%; max-width:400px; box-shadow:0 8px 16px rgba(0,0,0,0.3); animation:fadeIn 0.3s ease-in-out; }
-    .modal-content h3 { margin-top:0; color:#333; text-align:center; }
+    .modal-content { background:var(--card-bg); padding:24px; border-radius:10px; width:90%; max-width:360px; box-shadow:0 8px 16px var(--shadow); animation:fadeIn 0.3s ease-in-out; }
+    .modal-content h3 { margin-top:0; color:var(--text-color); text-align:center; }
     .modal-content input { width:100%; margin:10px 0; padding:12px; font-size:1em; border:1px solid #ccc; border-radius:6px; }
     .modal-content button { margin-top:10px; padding:12px; font-size:1em; border-radius:6px; width:100%; cursor:pointer; border:none; }
-    .modal-content button:first-of-type { background:#4caf50; color:white; }
-    .modal-content button:last-of-type { background:#e0e0e0; color:#333; }
+    .modal-content button:first-of-type { background:var(--accent-color); color:white; }
+    .modal-content button:last-of-type { background:#e0e0e0; color:var(--text-color); }
     @keyframes fadeIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
   </style>
+  <link rel="manifest" href="manifest.json">
 </head>
 <body>
   <button class="back-btn" onclick="goBack()">⬅ Back</button>
@@ -86,7 +97,15 @@
       runningBalanceEl.className = 'balance ' + (balance >= 0 ? 'green' : 'red');
     }
 
-    function goBack() { window.location.href = 'index.html'; }
+    function goBack() {
+      // if there is a referrer (we came from index), go back in history
+      if (document.referrer && document.referrer !== window.location.href) {
+        window.history.back();
+      } else {
+        // otherwise fall back to opening the main page
+        window.location.href = 'index.html';
+      }
+    }
 
     function deleteEntry(index) {
       if (!confirm('Delete this entry?')) return;
@@ -162,6 +181,13 @@
       .then(res => console.log('Synced entry'))
       .catch(err => console.error('Sync failed', err));
     }
+
+  // register service worker for PWA support
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed:', err));
+    });
+  }
   </script>
 </body>
 </html>

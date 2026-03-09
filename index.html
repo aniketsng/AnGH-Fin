@@ -5,6 +5,7 @@
   <link rel="manifest" href="manifest.json">
   <title>ANGH</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2d89ef" />
   <style>
     :root {
       --primary-color: #5e35b1;
@@ -60,17 +61,63 @@
       box-shadow: 0 4px 10px var(--shadow);
       cursor: pointer;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      position: relative;
       transition: background-color 0.2s;
     }
+    .customer-card .customer-name { flex: 1; }
+    .customer-card .balance { margin-right: 8px; }
     .customer-card:hover { background-color: #f0eefc; }
     .customer-name { font-weight: bold; font-size: 1.1em; }
     .balance { font-weight: bold; font-size: 1.05em; }
     .credit { color: var(--receive-color); }
     .debit { color: var(--give-color); }
+    /* three-dot menu styles */
+    .card-menu { position: relative; /* no extra padding, button is absolutely positioned */ }
+    .menu-button {
+      background: transparent;
+      border: none;
+      font-size: 1.4em;
+      cursor: pointer;
+      padding: 4px;
+      width: auto;
+      line-height: 1;
+      color: #555;
+    }
+    .menu-dropdown {
+      position: absolute;
+      top: 50%;
+      right: 8px;
+      transform: translateY(-50%);
+      background: white;
+      box-shadow: 0 2px 6px var(--shadow);
+      border-radius: 6px;
+      display: none;
+      flex-direction: column;
+      min-width: 100px;
+      z-index: 100;
+      overflow: hidden;
+    }
+    .menu-dropdown.show { display: flex; }
+    .menu-dropdown button {
+      background: transparent;
+      border: none;
+      padding: 8px 12px;
+      text-align: left;
+      width: 100%;
+      cursor: pointer;
+      color: #333;
+      font-size: 0.95em;
+    }
+    .menu-dropdown button:hover { background: var(--bg-color); }
     .filter-row {
       display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;
+    }
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-weight: bold;
     }
     .modal {
       position: fixed; top: 0; left: 0;
@@ -111,8 +158,17 @@
 
 <header>ANGH</header>
 <main>
-  <div class="filter-row">
-    <input id="filterName" type="text" placeholder="Search by name..." oninput="renderCustomers()" />
+  <div id="totals" class="totals-row">
+    <span id="totalCredit" class="credit">₹0.00</span>
+    <span id="totalDebit" class="debit">₹0.00</span>
+  </div>
+  <div class="filter-row" style="display:flex; gap:10px;">
+    <input id="filterName" type="text" placeholder="Search by name..." oninput="renderCustomers()" style="flex:6;" />
+    <button id="exportData" style="flex:2;">Export</button>
+    <button id="importData" style="flex:2;">Import</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none" />
+  </div>
+  <div class="filter-row" style="justify-content:center; margin-top:10px;">
     <button onclick="clearFilter()">Clear</button>
   </div>
   <div id="customerList"></div>
@@ -127,6 +183,38 @@
 
   function saveData() {
     localStorage.setItem('customers', JSON.stringify(customers));
+  }
+
+  function exportData() {
+    const dataStr = JSON.stringify(customers, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'customers.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importDataFromFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const arr = JSON.parse(e.target.result);
+        if (Array.isArray(arr)) {
+          customers.length = 0;
+          arr.forEach(c => customers.push(c));
+          saveData();
+          renderCustomers();
+          alert('Import successful');
+        } else {
+          throw new Error('Invalid format');
+        }
+      } catch (err) {
+        alert('Failed to import: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
   }
 
   function showCustomerModal() {
@@ -165,6 +253,18 @@
     return transactions.reduce((total, t) => total + (t.type === 'credit' ? t.amount : -t.amount), 0);
   }
 
+  function calculateTotals(filterName = '') {
+    let credit = 0, debit = 0;
+    customers.forEach(c => {
+      if (filterName && !c.name.toLowerCase().includes(filterName)) return;
+      c.transactions.forEach(t => {
+        if (t.type === 'credit') credit += t.amount;
+        else debit += t.amount;
+      });
+    });
+    return { credit, debit };
+  }
+
   function clearFilter() {
     document.getElementById('filterName').value = '';
     renderCustomers();
@@ -172,6 +272,11 @@
 
   function renderCustomers() {
     const filterName = document.getElementById('filterName').value.toLowerCase();
+    // update totals above search
+    const totals = calculateTotals(filterName);
+    document.getElementById('totalCredit').textContent = `₹${totals.credit.toFixed(2)}`;
+    document.getElementById('totalDebit').textContent = `₹${totals.debit.toFixed(2)}`;
+
     const container = document.getElementById('customerList');
     container.innerHTML = '';
     customers.forEach((c, i) => {
@@ -180,11 +285,16 @@
       const balanceClass = balance >= 0 ? 'credit' : 'debit';
 
       const card = document.createElement('div');
-      card.className = 'customer-card';
+      card.className = 'customer-card card-menu';
       card.onclick = function () { openCustomerPage(i); };
       card.innerHTML = `
         <div class="customer-name">${c.name}</div>
-        <div class="balance ${balanceClass}">₹${balance.toFixed(2)}</div>`;
+        <div class="balance ${balanceClass}">₹${balance.toFixed(2)}</div>
+        <button class="menu-button" onclick="toggleMenu(event, ${i})">⋮</button>
+        <div class="menu-dropdown" id="menu-${i}">
+          <button onclick="event.stopPropagation();renameCustomer(${i})">Rename</button>
+          <button onclick="event.stopPropagation();deleteCustomer(${i})">Delete</button>
+        </div>`;
       container.appendChild(card);
     });
   }
@@ -197,6 +307,53 @@
         'Content-Type': 'application/json'
       }
     }).then(res => console.log('Synced:', entry)).catch(err => console.error('Sync failed', err));
+  }
+
+  function toggleMenu(event, index) {
+    event.stopPropagation();
+    const menu = document.getElementById(`menu-${index}`);
+    if (menu) {
+      menu.classList.toggle('show');
+    }
+  }
+
+  // close menus when clicking anywhere else
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.menu-dropdown.show').forEach(m => m.classList.remove('show'));
+  });
+
+  function renameCustomer(index) {
+    const newName = prompt('Enter new name:', customers[index].name);
+    if (newName && newName.trim()) {
+      customers[index].name = newName.trim();
+      saveData();
+      renderCustomers();
+    }
+  }
+
+  function deleteCustomer(index) {
+    if (!confirm('Delete this customer and all transactions?')) return;
+    customers.splice(index, 1);
+    saveData();
+    renderCustomers();
+  }
+
+  // export/import button listeners
+  document.getElementById('exportData').addEventListener('click', exportData);
+  document.getElementById('importData').addEventListener('click', () => {
+    document.getElementById('importFile').click();
+  });
+  document.getElementById('importFile').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) importDataFromFile(file);
+    e.target.value = '';
+  });
+
+  // register service worker for PWA support
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(err => console.error('SW registration failed:', err));
+    });
   }
 
   renderCustomers();
