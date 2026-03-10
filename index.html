@@ -18,6 +18,18 @@
       --button-hover: #4527a0;
       --shadow: rgba(0, 0, 0, 0.12);
     }
+    /* dark mode overrides */
+    body.dark {
+      --primary-color: #3f3f94;
+      --bg-color: #121212;
+      --text-color: #e0e0e0;
+      --card-bg: #1e1e1e;
+      --receive-color: #66bb6a;
+      --give-color: #ef5350;
+      --button: #424242;
+      --button-hover: #616161;
+      --shadow: rgba(0, 0, 0, 0.4);
+    }
     * { box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -52,6 +64,16 @@
       cursor: pointer;
       transition: background 0.3s;
     }
+    /* settings and top add button should match other buttons */
+    #settingsButton, #addCustomerTop {
+      background: var(--button);
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
+      width: 100%;
+    }
+
     button:hover { background: var(--button-hover); }
     .customer-card {
       background: var(--card-bg);
@@ -163,10 +185,23 @@
     <span id="totalDebit" class="debit">₹0.00</span>
   </div>
   <div class="filter-row" style="display:flex; gap:10px;">
-    <input id="filterName" type="text" placeholder="Search by name..." oninput="renderCustomers()" style="flex:6;" />
-    <button id="exportData" style="flex:2;">Export</button>
-    <button id="importData" style="flex:2;">Import</button>
-    <input type="file" id="importFile" accept="application/json" style="display:none" />
+    <input id="filterName" type="text" placeholder="Search by name..." oninput="renderCustomers()" style="flex:3;" />
+    <!-- add-customer button moved to top row -->
+    <!-- containers give equal space to each control -->
+    <div style="flex:2 1 0; display:flex;">
+      <button id="addCustomerTop" class="button" style="width:100%;">Add Customer</button>
+    </div>
+    <!-- settings dropdown contains export/import -->
+    <div class="card-menu" style="flex:2 1 0; position:relative; display:flex;">
+      <button id="settingsButton" class="menu-button button" style="width:100%;">Settings</button>
+      <div class="menu-dropdown" id="settingsDropdown">
+        <button id="exportData">Export</button>
+        <button id="importData">Import</button>
+        <button id="toggleDarkMode">Dark Mode</button>
+      </div>
+    </div>
+    <!-- accept either JSON or .angh exports -->
+    <input type="file" id="importFile" accept="application/json,.angh" style="display:none" />
   </div>
   <div class="filter-row" style="justify-content:center; margin-top:10px;">
     <button onclick="clearFilter()">Clear</button>
@@ -174,9 +209,7 @@
   <div id="customerList"></div>
 </main>
 
-<div class="bottom-bar">
-  <button onclick="showCustomerModal()">➕ Add Customer</button>
-</div>
+<!-- bottom bar removed as requested -->
 
 <script>
   const customers = JSON.parse(localStorage.getItem('customers')) || [];
@@ -191,7 +224,8 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'customers.json';
+    // use custom extension so export files are not treated as plain JSON
+    a.download = 'customers.angh';
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -253,14 +287,13 @@
     return transactions.reduce((total, t) => total + (t.type === 'credit' ? t.amount : -t.amount), 0);
   }
 
-  function calculateTotals(filterName = '') {
+  function calculateTotals() {
     let credit = 0, debit = 0;
     customers.forEach(c => {
-      if (filterName && !c.name.toLowerCase().includes(filterName)) return;
-      c.transactions.forEach(t => {
-        if (t.type === 'credit') credit += t.amount;
-        else debit += t.amount;
-      });
+      // always include every customer regardless of any filter
+      const balance = calculateBalance(c.transactions);
+      if (balance >= 0) credit += balance;
+      else debit += -balance; // treat negative balance as debit amount
     });
     return { credit, debit };
   }
@@ -272,10 +305,10 @@
 
   function renderCustomers() {
     const filterName = document.getElementById('filterName').value.toLowerCase();
-    // update totals above search
-    const totals = calculateTotals(filterName);
-    document.getElementById('totalCredit').textContent = `₹${totals.credit.toFixed(2)}`;
-    document.getElementById('totalDebit').textContent = `₹${totals.debit.toFixed(2)}`;
+    // update totals above search (grand totals, unaffected by filter)
+    const totals = calculateTotals();
+    document.getElementById('totalCredit').textContent = `Credit ₹${totals.credit.toFixed(2)}`;
+    document.getElementById('totalDebit').textContent = `Debit ₹${totals.debit.toFixed(2)}`;
 
     const container = document.getElementById('customerList');
     container.innerHTML = '';
@@ -283,13 +316,14 @@
       if (filterName && !c.name.toLowerCase().includes(filterName)) return;
       const balance = calculateBalance(c.transactions);
       const balanceClass = balance >= 0 ? 'credit' : 'debit';
+      const displayAmount = `₹${balance.toFixed(2)}`;
 
       const card = document.createElement('div');
       card.className = 'customer-card card-menu';
       card.onclick = function () { openCustomerPage(i); };
       card.innerHTML = `
         <div class="customer-name">${c.name}</div>
-        <div class="balance ${balanceClass}">₹${balance.toFixed(2)}</div>
+        <div class="balance ${balanceClass}">${displayAmount}</div>
         <button class="menu-button" onclick="toggleMenu(event, ${i})">⋮</button>
         <div class="menu-dropdown" id="menu-${i}">
           <button onclick="event.stopPropagation();renameCustomer(${i})">Rename</button>
@@ -339,6 +373,18 @@
   }
 
   // export/import button listeners
+  // top-row add customer
+  document.getElementById('addCustomerTop').addEventListener('click', showCustomerModal);
+
+  // settings button behaviour
+  document.getElementById('settingsButton').addEventListener('click', event => {
+    event.stopPropagation();
+    document.getElementById('settingsDropdown').classList.toggle('show');
+  });
+  document.addEventListener('click', () => {
+    document.getElementById('settingsDropdown')?.classList.remove('show');
+  });
+
   document.getElementById('exportData').addEventListener('click', exportData);
   document.getElementById('importData').addEventListener('click', () => {
     document.getElementById('importFile').click();
@@ -348,6 +394,18 @@
     if (file) importDataFromFile(file);
     e.target.value = '';
   });
+
+  // dark mode support
+  function applyDarkMode(enabled) {
+    document.body.classList.toggle('dark', enabled);
+    localStorage.setItem('darkMode', enabled);
+    document.getElementById('toggleDarkMode').textContent = enabled ? 'Light Mode' : 'Dark Mode';
+  }
+  document.getElementById('toggleDarkMode').addEventListener('click', () => {
+    applyDarkMode(!document.body.classList.contains('dark'));
+  });
+  // initialize from storage
+  applyDarkMode(localStorage.getItem('darkMode') === 'true');
 
   // register service worker for PWA support
   if ('serviceWorker' in navigator) {

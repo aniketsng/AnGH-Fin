@@ -52,6 +52,8 @@
     <button class="export-btn" id="exportPDF">📄 Export PDF</button>
     <span id="runningBalance" class="balance">₹0.00</span>
   </header>
+  <!-- hidden logo element for PDF generation -->
+  <img id="logo" src="logo.png" style="display:none" />
   <div id="entries"></div>
   <div class="bottom-bar">
     <button class="credit-btn" onclick="openEntryModal('credit')">➕ Credit</button>
@@ -158,17 +160,75 @@
 
     document.getElementById('exportPDF').addEventListener('click', () => {
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
       const customer = customers[data.index];
+
+      // document title and grey header band
+      doc.setFillColor(240);
+      doc.rect(0, 0, doc.internal.pageSize.getWidth(), 80, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(50);
+      doc.setFontSize(24);
+      doc.text('ANGH', 40, 40);
+      const logoImg = document.getElementById('logo');
+      if (logoImg && logoImg.complete && logoImg.naturalWidth) {
+        try {
+          doc.addImage(logoImg, 'PNG', 400, 10, 120, 60);
+        } catch (e) { console.warn('Logo add failed', e); }
+      }
+
+      // customer name below header
+      doc.setTextColor(0);
       doc.setFontSize(16);
-      doc.text(`Customer: ${customer.name}`, 20, 20);
-      let y = 30;
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Customer: ${customer.name}`, 40, 100);
+
+      // table headings with shading
+      let y = 120;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setFillColor(200);
+      // shade only header width (approx to last column)
+      doc.rect(40, y-10, 460, 20, 'F');
+      doc.setTextColor(0);
+      // reposition columns with more space and ensure no overlap
+      const cols = { no:50, date:90, type:180, amt:320, note:420 };
+      doc.text('No.', cols.no, y);
+      doc.text('Date', cols.date, y);
+      doc.text('Type', cols.type, y);
+      doc.text('Amount', cols.amt, y, { align: 'right' });
+      doc.text('Note', cols.note, y);
+      doc.setDrawColor(180);
+      doc.setLineWidth(0.3);
+      doc.line(40, y+5, 420, y+5);
+      // vertical separators at midpoints between columns
+      const separators = [75, 135, 250, 370];
+      separators.forEach(x => doc.line(x, y-10, x, y+10));
+
+
+      // entries
+      y += 20;
+      doc.setFont('helvetica', 'normal');
       customer.transactions.forEach((entry, i) => {
+        if (y > 750) { doc.addPage(); y = 40; }
         const date = new Date(entry.date).toLocaleDateString();
-        doc.setFontSize(12);
-        doc.text(`${i+1}. ₹${entry.amount.toFixed(2)} – ${entry.type.toUpperCase()} (${date}) ${entry.note||''}`, 20, y);
-        y += 8;
+        const typeLabel = entry.type.charAt(0).toUpperCase() + entry.type.slice(1);
+        doc.text((i+1).toString(), cols.no, y);
+        doc.text(date, cols.date, y);
+        doc.text(typeLabel, cols.type, y);
+        // right-align amount and use Rs. to avoid spacing issues with ₹
+        doc.text(`Rs.${entry.amount.toFixed(2)}`, cols.amt, y, { align: 'right' });
+        doc.text(entry.note || '', cols.note, y);
+        // draw vertical separators for this row
+        [75,135,250,370].forEach(x => doc.line(x, y-5, x, y+15));
+        y += 20;
       });
+
+      // final balance
+      const balance = customer.transactions.reduce((sum, e) => sum + (e.type === 'credit' ? e.amount : -e.amount), 0);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Balance: Rs.${balance.toFixed(2)}`, cols.amt, y + 20, { align: 'right' });
+
       doc.save(`${customer.name}_ledger.pdf`);
     });
 
