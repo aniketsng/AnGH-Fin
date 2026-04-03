@@ -8,33 +8,39 @@
   <meta name="theme-color" content="#2d89ef" />
   <style>
     :root {
-      --primary-color: #5e35b1;
-      --bg-color: #f4f4f6;
-      --text-color: #212121;
+      --primary-color: #6d28d9;
+      --bg-color: #f8f9fa;
+      --text-color: #1a202c;
       --card-bg: #ffffff;
-      --receive-color: #2e7d32;
-      --give-color: #d32f2f;
-      --button: #5e35b1;
-      --button-hover: #4527a0;
-      --shadow: rgba(0, 0, 0, 0.12);
+      --receive-color: #059669;
+      --give-color: #dc2626;
+      --button: #6d28d9;
+      --button-hover: #5b21b6;
+      --shadow: rgba(0, 0, 0, 0.08);
+      --border-color: #e5e7eb;
+      --glass-bg: rgba(255, 255, 255, 0.65);
+      --glass-border: rgba(109, 40, 217, 0.15);
     }
     /* dark mode overrides */
     body.dark {
-      --primary-color: #3f3f94;
-      --bg-color: #121212;
-      --text-color: #e0e0e0;
-      --card-bg: #1e1e1e;
-      --receive-color: #66bb6a;
-      --give-color: #ef5350;
-      --button: #424242;
-      --button-hover: #616161;
-      --shadow: rgba(0, 0, 0, 0.4);
+      --primary-color: #7c3aed;
+      --bg-color: #0f172a;
+      --text-color: #f1f5f9;
+      --card-bg: #1e293b;
+      --receive-color: #10b981;
+      --give-color: #f87171;
+      --button: #7c3aed;
+      --button-hover: #6d28d9;
+      --shadow: rgba(0, 0, 0, 0.3);
+      --border-color: #334155;
+      --glass-bg: rgba(0, 0, 0, 0.1);
+      --glass-border: rgba(255, 255, 255, 0.1);
     }
     * { box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', sans-serif;
       margin: 0;
-      background: var(--bg-color);
+      background: linear-gradient(135deg, var(--bg-color) 0%, var(--bg-color) 100%);
       color: var(--text-color);
     }
     header {
@@ -55,7 +61,11 @@
       margin-top: 10px;
       font-size: 1em;
       border-radius: 6px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border-color);
+    }
+    input {
+      background: var(--card-bg);
+      color: var(--text-color);
     }
     button {
       background: var(--button);
@@ -76,7 +86,9 @@
 
     button:hover { background: var(--button-hover); }
     .customer-card {
-      background: var(--card-bg);
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
       margin-top: 20px;
       padding: 20px;
       border-radius: 10px;
@@ -85,11 +97,16 @@
       display: flex;
       align-items: center;
       position: relative;
-      transition: background-color 0.2s;
+      transition: background-color 0.2s, transform 0.18s ease, opacity 0.18s ease;
+      will-change: transform, opacity;
     }
     .customer-card .customer-name { flex: 1; }
     .customer-card .balance { margin-right: 8px; }
-    .customer-card:hover { background-color: #f0eefc; }
+    .customer-card:hover { background-color: var(--bg-color); opacity: 0.95; }
+    .customer-card.active-click {
+      transform: scale(0.96);
+      opacity: 0.72;
+    }
     .customer-name { font-weight: bold; font-size: 1.1em; }
     .balance { font-weight: bold; font-size: 1.05em; }
     .credit { color: var(--receive-color); }
@@ -104,19 +121,21 @@
       padding: 4px;
       width: auto;
       line-height: 1;
-      color: #555;
+      color: var(--text-color);
     }
     .menu-dropdown {
       position: absolute;
       top: 50%;
       right: 8px;
       transform: translateY(-50%);
-      background: white;
-      box-shadow: 0 2px 6px var(--shadow);
-      border-radius: 6px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 4px 12px var(--shadow);
+      border-radius: 8px;
       display: none;
       flex-direction: column;
-      min-width: 100px;
+      min-width: 120px;
       z-index: 100;
       overflow: hidden;
     }
@@ -124,14 +143,15 @@
     .menu-dropdown button {
       background: transparent;
       border: none;
-      padding: 8px 12px;
+      padding: 10px 14px;
       text-align: left;
       width: 100%;
       cursor: pointer;
-      color: #333;
+      color: var(--text-color);
       font-size: 0.95em;
+      transition: background 0.2s;
     }
-    .menu-dropdown button:hover { background: var(--bg-color); }
+    .menu-dropdown button:hover { background: var(--primary-color); color: white; }
     .filter-row {
       display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;
     }
@@ -149,7 +169,9 @@
       z-index: 1000;
     }
     .modal-content {
-      background: var(--card-bg);
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
       padding: 20px;
       border-radius: 10px;
       max-width: 400px;
@@ -195,13 +217,14 @@
     <div class="card-menu" style="flex:2 1 0; position:relative; display:flex;">
       <button id="settingsButton" class="menu-button button" style="width:100%;">Settings</button>
       <div class="menu-dropdown" id="settingsDropdown">
-        <button id="exportData">Export</button>
+        <button id="exportCSV">Export CSV</button>
+        <button id="exportJSON">Export JSON</button>
         <button id="importData">Import</button>
         <button id="toggleDarkMode">Dark Mode</button>
       </div>
     </div>
-    <!-- accept either JSON or .angh exports -->
-    <input type="file" id="importFile" accept="application/json,.angh" style="display:none" />
+    <!-- accept CSV or JSON/angh exports -->
+    <input type="file" id="importFile" accept=".csv,application/json,.angh,text/csv" style="display:none" />
   </div>
   <div class="filter-row" style="justify-content:center; margin-top:10px;">
     <button onclick="clearFilter()">Clear</button>
@@ -213,19 +236,56 @@
 
 <script>
   const customers = JSON.parse(localStorage.getItem('customers')) || [];
+  console.log('Loaded customers:', customers);
+
+  // If no customers, add some sample data for testing
+  if (customers.length === 0) {
+    customers.push(
+      { name: 'John Doe', phone: '1234567890', transactions: [
+        { type: 'credit', amount: 1000, date: new Date().toISOString() },
+        { type: 'debit', amount: 500, date: new Date().toISOString() }
+      ]},
+      { name: 'Jane Smith', phone: '', transactions: [
+        { type: 'credit', amount: 2000, date: new Date().toISOString() }
+      ]}
+    );
+    saveData();
+    console.log('Added sample customers');
+  }
 
   function saveData() {
     localStorage.setItem('customers', JSON.stringify(customers));
   }
 
-  function exportData() {
-    const dataStr = JSON.stringify(customers, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
+  function exportDataCsv() {
+    let csv = 'Customer Name,Phone,Credit Amount,Debit Amount,Balance\n';
+    customers.forEach(customer => {
+      let totalCredit = 0, totalDebit = 0;
+      customer.transactions.forEach(t => {
+        if (t.type === 'credit') totalCredit += t.amount;
+        else totalDebit += t.amount;
+      });
+      const balance = totalCredit - totalDebit;
+      const phone = customer.phone ? `"${customer.phone}"` : '';
+      csv += `"${customer.name}",${phone},${totalCredit},${totalDebit},${balance}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    // use custom extension so export files are not treated as plain JSON
-    a.download = 'customers.angh';
+    a.download = `customers_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportDataJson() {
+    const jsonStr = JSON.stringify(customers, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `customers_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -234,21 +294,101 @@
     const reader = new FileReader();
     reader.onload = e => {
       try {
-        const arr = JSON.parse(e.target.result);
-        if (Array.isArray(arr)) {
+        const content = e.target.result;
+        let arr = null;
+        
+        // Check if it's CSV format
+        if (file.name.endsWith('.csv') || file.type === 'text/csv' || content.includes('Customer Name')) {
+          arr = parseCSV(content);
+          // For CSV import, merge with existing data to preserve transactions
+          const mergedCustomers = importMergeCSV(arr);
+          customers.length = 0;
+          mergedCustomers.forEach(c => customers.push(c));
+        } else {
+          // Try JSON format - this completely replaces data
+          arr = JSON.parse(content);
+          if (!Array.isArray(arr)) {
+            throw new Error('Invalid JSON format');
+          }
           customers.length = 0;
           arr.forEach(c => customers.push(c));
+        }
+        
+        if (customers.length > 0) {
           saveData();
           renderCustomers();
-          alert('Import successful');
+          alert('Import successful! ' + customers.length + ' customer(s) loaded.');
         } else {
-          throw new Error('Invalid format');
+          throw new Error('No valid customer data found');
         }
       } catch (err) {
         alert('Failed to import: ' + err.message);
       }
     };
     reader.readAsText(file);
+  }
+  
+  function importMergeCSV(csvCustomers) {
+    // For CSV import, merge with existing customers to preserve transactions
+    const merged = [];
+    const existingMap = new Map(customers.map(c => [c.name.toLowerCase(), c]));
+    
+    csvCustomers.forEach(csvCustomer => {
+      const existing = existingMap.get(csvCustomer.name.toLowerCase());
+      if (existing) {
+        // Keep existing customer with transactions
+        merged.push(existing);
+      } else {
+        // New customer from CSV
+        merged.push(csvCustomer);
+      }
+    });
+    
+    // Keep any existing customers not in CSV
+    customers.forEach(c => {
+      if (!merged.some(m => m.name.toLowerCase() === c.name.toLowerCase())) {
+        merged.push(c);
+      }
+    });
+    
+    return merged;
+  }
+  
+  function parseCSV(csv) {
+    const lines = csv.trim().split('\n');
+    const header = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+    const arr = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      
+      // Parse CSV line handling quoted fields
+      const values = [];
+      let current = '';
+      let inQuotes = false;
+      for (let j = 0; j < lines[i].length; j++) {
+        const char = lines[i][j];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current.replace(/"/g, '').trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.replace(/"/g, '').trim());
+      
+      if (values.length >= 1 && values[0]) {
+        const customer = {
+          name: values[0],
+          phone: values[1] || '',
+          transactions: [] // CSV export doesn't include transactions
+        };
+        arr.push(customer);
+      }
+    }
+    return arr;
   }
 
   function showCustomerModal() {
@@ -304,6 +444,7 @@
   }
 
   function renderCustomers() {
+    console.log('Rendering customers, total customers:', customers.length);
     const filterName = document.getElementById('filterName').value.toLowerCase();
     // update totals above search (grand totals, unaffected by filter)
     const totals = calculateTotals();
@@ -312,7 +453,12 @@
 
     const container = document.getElementById('customerList');
     container.innerHTML = '';
-    customers.forEach((c, i) => {
+    // Create a sorted array with indices to maintain original position
+    const sortedCustomers = customers.map((c, i) => ({ customer: c, originalIndex: i }))
+      .sort((a, b) => a.customer.name.localeCompare(b.customer.name));
+    
+    console.log('Sorted customers:', sortedCustomers.length);
+    sortedCustomers.forEach(({ customer: c, originalIndex: i }) => {
       if (filterName && !c.name.toLowerCase().includes(filterName)) return;
       const balance = calculateBalance(c.transactions);
       const balanceClass = balance >= 0 ? 'credit' : 'debit';
@@ -320,17 +466,22 @@
 
       const card = document.createElement('div');
       card.className = 'customer-card card-menu';
-      card.onclick = function () { openCustomerPage(i); };
+      card.addEventListener('click', function () {
+        if (card.classList.contains('active-click')) return;
+        card.classList.add('active-click');
+        setTimeout(() => openCustomerPage(i), 140);
+      });
       card.innerHTML = `
         <div class="customer-name">${c.name}</div>
         <div class="balance ${balanceClass}">${displayAmount}</div>
-        <button class="menu-button" onclick="toggleMenu(event, ${i})">⋮</button>
+        <button class="menu-button" onclick="event.stopPropagation();toggleMenu(event, ${i})">⋮</button>
         <div class="menu-dropdown" id="menu-${i}">
           <button onclick="event.stopPropagation();renameCustomer(${i})">Rename</button>
           <button onclick="event.stopPropagation();deleteCustomer(${i})">Delete</button>
         </div>`;
       container.appendChild(card);
     });
+    console.log('Rendered cards:', container.children.length);
   }
 
   function syncToSheet(entry) {
@@ -385,7 +536,8 @@
     document.getElementById('settingsDropdown')?.classList.remove('show');
   });
 
-  document.getElementById('exportData').addEventListener('click', exportData);
+  document.getElementById('exportCSV').addEventListener('click', exportDataCsv);
+  document.getElementById('exportJSON').addEventListener('click', exportDataJson);
   document.getElementById('importData').addEventListener('click', () => {
     document.getElementById('importFile').click();
   });
