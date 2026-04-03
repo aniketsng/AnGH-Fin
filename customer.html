@@ -6,51 +6,84 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     :root{
-      --primary-color:#5e35b1;
-      --accent-color:#388e3c;
-      --debit-color:#d32f2f;
-      --bg-color:#f5f5f5;
+      --primary-color:#6d28d9;
+      --accent-color:#059669;
+      --debit-color:#dc2626;
+      --bg-color:#f8f9fa;
       --card-bg:#ffffff;
-      --text-color:#333;
-      --shadow:rgba(0,0,0,0.1);
+      --text-color:#1a202c;
+      --shadow:rgba(0,0,0,0.08);
+      --border-color:#e5e7eb;
+      --glass-bg: rgba(255, 255, 255, 0.65);
+      --glass-border: rgba(109, 40, 217, 0.15);
     }
-    body { font-family:'Segoe UI',sans-serif; margin:0; background:var(--bg-color); color:var(--text-color); padding:16px; padding-bottom:80px; }
+    body.dark {
+      --primary-color:#7c3aed;
+      --accent-color:#10b981;
+      --debit-color:#f87171;
+      --bg-color:#0f172a;
+      --card-bg:#1e293b;
+      --text-color:#f1f5f9;
+      --shadow:rgba(0,0,0,0.3);
+      --border-color:#334155;
+      --glass-bg: rgba(0, 0, 0, 0.1);
+      --glass-border: rgba(255, 255, 255, 0.1);
+    }
+    body { font-family:'Segoe UI',sans-serif; margin:0; background: linear-gradient(135deg, var(--bg-color) 0%, var(--bg-color) 100%); color:var(--text-color); padding:16px; padding-bottom:80px; }
     header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; font-size:1.2em; font-weight:bold; margin-bottom:16px; padding:12px 16px; background:var(--primary-color); color:white; border-radius:8px; }
-    .back-btn { background:var(--primary-color); color:white; border:none; padding:8px 14px; font-size:0.95em; border-radius:6px; cursor:pointer; box-shadow:0 2px 4px var(--shadow); }
-    .back-btn:hover { background:#4a148c; }
+    .back-btn { background:var(--primary-color); color:white; border:none; padding:8px 14px; font-size:0.95em; border-radius:6px; cursor:pointer; box-shadow:0 2px 4px var(--shadow); margin-right:12px; }
+    .back-btn:hover { background:#5b21b6; }
     .balance { font-weight:bold; }
     .balance.green { color:var(--accent-color); }
     .balance.red { color:var(--debit-color); }
-    .entry { background:var(--card-bg); padding:12px; margin:10px 0; border-radius:6px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 6px var(--shadow); }
+    .entry { 
+      background: var(--glass-bg); 
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+      padding: 8px 12px; 
+      margin: 6px 0; 
+      border-radius: 4px; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      transition: border-color 0.2s;
+    }
+    .entry:hover { border-color: var(--primary-color); }
     .credit { color:var(--accent-color); }
     .debit { color:var(--debit-color); }
-    .buttons { display:flex; gap:8px; }
-    button { padding:6px 10px; font-size:0.9em; border:none; border-radius:6px; cursor:pointer; }
+    .buttons { display:flex; gap:4px; }
+    button { padding:4px 8px; font-size:0.8em; border:none; border-radius:4px; cursor:pointer; }
     .edit-btn { background:#1976d2; color:white; }
     .delete-btn { background:#d32f2f; color:white; }
-    .export-btn { background:var(--accent-color); color:white; padding:8px 14px; font-size:0.95em; border-radius:6px; margin:0 10px; cursor:pointer; }
-    .export-btn:hover { background:#2e7d32; }
-    .bottom-bar { position:fixed; bottom:0; left:0; width:100%; display:flex; justify-content:space-around; padding:12px; background:var(--card-bg); box-shadow:0 -2px 5px var(--shadow); }
+    .export-btn { background:var(--accent-color); color:white; padding:8px 14px; font-size:0.95em; border-radius:6px; margin:0 10px; cursor:pointer; transition:background 0.3s; }
+    .export-btn:hover { background:#047857; }
+    .bottom-bar { position:fixed; bottom:0; left:0; width:100%; display:flex; justify-content:space-around; padding:12px; background: var(--glass-bg); backdrop-filter: blur(10px); border-top: 1px solid var(--glass-border); }
     .bottom-bar button { width:45%; padding:14px 0; font-size:1em; border-radius:30px; }
     .credit-btn { background:var(--accent-color); color:white; }
     .debit-btn { background:var(--debit-color); color:white; }
     .modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:999; }
-    .modal-content { background:var(--card-bg); padding:24px; border-radius:10px; width:90%; max-width:360px; box-shadow:0 8px 16px var(--shadow); animation:fadeIn 0.3s ease-in-out; }
-    .modal-content h3 { margin-top:0; color:var(--text-color); text-align:center; }
-    .modal-content input { width:100%; margin:10px 0; padding:12px; font-size:1em; border:1px solid #ccc; border-radius:6px; }
-    .modal-content button { margin-top:10px; padding:12px; font-size:1em; border-radius:6px; width:100%; cursor:pointer; border:none; }
-    .modal-content button:first-of-type { background:var(--accent-color); color:white; }
-    .modal-content button:last-of-type { background:#e0e0e0; color:var(--text-color); }
+    .modal-content { background: var(--glass-bg); backdrop-filter: blur(14px); border: 1px solid var(--glass-border); padding:26px; border-radius:14px; width:92%; max-width:380px; box-shadow:0 12px 24px rgba(0,0,0,0.25); animation:fadeIn 0.28s ease-in-out; box-sizing:border-box; }
+    .modal-content h3 { margin-top:0; color:var(--text-color); text-align:center; font-size:1.2rem; letter-spacing:0.2px; }
+    .modal-content input { width:100%; margin:10px 0; padding:12px 14px; font-size:1rem; border:1px solid rgba(255,255,255,0.35); border-radius:10px; background:rgba(255,255,255,0.16); color:var(--text-color); outline:none; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; box-sizing:border-box; }
+    .modal-content input:focus { transform: translateY(-1px); border-color: rgba(255,255,255,0.8); box-shadow: 0 0 0 3px rgba(109,40,217,0.15); }
+    .modal-content button { margin-top:12px; padding:11px 12px; font-size:1rem; border-radius:10px; width:100%; cursor:pointer; border:none; transition: filter 0.2s, transform 0.2s; box-sizing:border-box; }
+    .modal-content button:first-of-type { background:var(--accent-color); color:white; box-shadow: 0 6px 12px rgba(25,118,210,0.25); }
+    .modal-content button:last-of-type { background:rgba(255,255,255,0.2); color:var(--text-color); border:1px solid rgba(255,255,255,0.3); }
+    .modal-content button:hover { transform: translateY(-1px); filter: brightness(1.05); }
     @keyframes fadeIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
   </style>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <button class="back-btn" onclick="goBack()">⬅ Back</button>
   <header>
-    <span id="customerName">Customer Name</span>
-    <button class="export-btn" id="exportPDF">📄 Export PDF</button>
-    <span id="runningBalance" class="balance">₹0.00</span>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button class="back-btn" onclick="goBack()">⬅ Back</button>
+      <span id="customerName" style="font-size:1.2em; font-weight:700;">Customer Name</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button class="export-btn" id="exportPDF">📄 Export PDF</button>
+      <span id="runningBalance" class="balance">₹0.00</span>
+    </div>
   </header>
   <!-- hidden logo element for PDF generation -->
   <img id="logo" src="logo.png" style="display:none" />
@@ -62,6 +95,14 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
+    // Apply dark mode if enabled
+    function applyDarkMode() {
+      if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark');
+      }
+    }
+    applyDarkMode();
+
     const data = JSON.parse(localStorage.getItem('currentCustomer'));
     const customers = JSON.parse(localStorage.getItem('customers')) || [];
     const entriesDiv = document.getElementById('entries');
@@ -73,28 +114,55 @@
       goBack();
     } else {
       customerName.innerText = data.name;
+      // Ensure customer has transactions array
+      if (!data.transactions) {
+        data.transactions = [];
+      }
       renderEntries();
     }
 
     function renderEntries() {
       entriesDiv.innerHTML = '';
-      const customer = customers[data.index];
+      
+      // Find customer by name to get fresh data from localStorage
+      let customer = customers.find(c => c.name === data.name);
+      
+      if (!customer) {
+        // Fallback to index if name doesn't match
+        customer = customers[data.index];
+      }
+      
+      if (!customer) {
+        entriesDiv.innerHTML = '<p style="text-align: center; color: var(--text-color);">No customer data found</p>';
+        runningBalanceEl.textContent = '₹0.00';
+        return;
+      }
+      
+      // Ensure transactions array exists
+      if (!customer.transactions) {
+        customer.transactions = [];
+      }
+      
       let balance = 0;
-      customer.transactions.forEach((entry, i) => {
-        balance += entry.type === 'credit' ? entry.amount : -entry.amount;
-        const div = document.createElement('div');
-        div.className = 'entry';
-        div.innerHTML = `
-          <div>
-            <div class="${entry.type}">₹${entry.amount.toFixed(2)} – ${entry.type.toUpperCase()}</div>
-            <small>${entry.note || ''} (${new Date(entry.date).toLocaleDateString()})</small>
-          </div>
-          <div class="buttons">
-            <button class="edit-btn" onclick="editEntry(${i})">Edit</button>
-            <button class="delete-btn" onclick="deleteEntry(${i})">Delete</button>
-          </div>`;
-        entriesDiv.appendChild(div);
-      });
+      if (customer.transactions.length === 0) {
+        entriesDiv.innerHTML = '<p style="text-align: center; color: var(--text-color);">No transactions yet. Click ➕ or ➖ to add.</p>';
+      } else {
+        customer.transactions.forEach((entry, i) => {
+          balance += entry.type === 'credit' ? entry.amount : -entry.amount;
+          const div = document.createElement('div');
+          div.className = 'entry';
+          div.innerHTML = `
+            <div>
+              <div class="${entry.type}">${entry.type.toUpperCase()}: ₹${entry.amount.toFixed(2)}</div>
+              <small>${entry.note || ''} ${new Date(entry.date).toLocaleDateString()}</small>
+            </div>
+            <div class="buttons">
+              <button class="edit-btn" onclick="editEntry(${i})">✏️</button>
+              <button class="delete-btn" onclick="deleteEntry(${i})">🗑️</button>
+            </div>`;
+          entriesDiv.appendChild(div);
+        });
+      }
       runningBalanceEl.textContent = `₹${balance.toFixed(2)}`;
       runningBalanceEl.className = 'balance ' + (balance >= 0 ? 'green' : 'red');
     }
@@ -111,15 +179,22 @@
 
     function deleteEntry(index) {
       if (!confirm('Delete this entry?')) return;
-      const customer = customers[data.index];
-      customer.transactions.splice(index,1);
-      localStorage.setItem('customers', JSON.stringify(customers));
-      renderEntries();
+      let customer = customers.find(c => c.name === data.name);
+      if (!customer) customer = customers[data.index];
+      if (customer) {
+        customer.transactions.splice(index, 1);
+        localStorage.setItem('customers', JSON.stringify(customers));
+        renderEntries();
+      }
     }
 
     function editEntry(index) {
-      const existing = customers[data.index].transactions[index];
-      openEntryModal(existing.type, index, existing);
+      let customer = customers.find(c => c.name === data.name);
+      if (!customer) customer = customers[data.index];
+      if (customer && customer.transactions[index]) {
+        const existing = customer.transactions[index];
+        openEntryModal(existing.type, index, existing);
+      }
     }
 
     function openEntryModal(type, editIndex=null, existing=null) {
@@ -139,12 +214,17 @@
     function submitEntry(type, editIndex) {
       const amount = parseFloat(document.getElementById('amount').value);
       const note = document.getElementById('note').value;
-      if (!amount||isNaN(amount)) return alert('Invalid amount');
-      const customer = customers[data.index];
+      if (!amount || isNaN(amount)) return alert('Invalid amount');
+      
+      let customer = customers.find(c => c.name === data.name);
+      if (!customer) customer = customers[data.index];
+      if (!customer) return alert('Customer not found');
+      
       const newEntry = { amount, note, type, date: new Date().toISOString() };
 
-      if (editIndex !== null) { customer.transactions[editIndex] = newEntry; }
-      else {
+      if (editIndex !== null) { 
+        customer.transactions[editIndex] = newEntry; 
+      } else {
         customer.transactions.push(newEntry);
         syncToSheet({
           name: customer.name,
@@ -161,7 +241,9 @@
     document.getElementById('exportPDF').addEventListener('click', () => {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-      const customer = customers[data.index];
+      let customer = customers.find(c => c.name === data.name);
+      if (!customer) customer = customers[data.index];
+      if (!customer) return alert('Customer data not found');
 
       // document title and grey header band
       doc.setFillColor(240);
@@ -209,23 +291,25 @@
       // entries
       y += 20;
       doc.setFont('helvetica', 'normal');
-      customer.transactions.forEach((entry, i) => {
-        if (y > 750) { doc.addPage(); y = 40; }
-        const date = new Date(entry.date).toLocaleDateString();
-        const typeLabel = entry.type.charAt(0).toUpperCase() + entry.type.slice(1);
-        doc.text((i+1).toString(), cols.no, y);
-        doc.text(date, cols.date, y);
-        doc.text(typeLabel, cols.type, y);
-        // right-align amount and use Rs. to avoid spacing issues with ₹
-        doc.text(`Rs.${entry.amount.toFixed(2)}`, cols.amt, y, { align: 'right' });
-        doc.text(entry.note || '', cols.note, y);
-        // draw vertical separators for this row
-        [75,135,250,370].forEach(x => doc.line(x, y-5, x, y+15));
-        y += 20;
-      });
+      if (customer.transactions && customer.transactions.length > 0) {
+        customer.transactions.forEach((entry, i) => {
+          if (y > 750) { doc.addPage(); y = 40; }
+          const date = new Date(entry.date).toLocaleDateString();
+          const typeLabel = entry.type.charAt(0).toUpperCase() + entry.type.slice(1);
+          doc.text((i+1).toString(), cols.no, y);
+          doc.text(date, cols.date, y);
+          doc.text(typeLabel, cols.type, y);
+          // right-align amount and use Rs. to avoid spacing issues with ₹
+          doc.text(`Rs.${entry.amount.toFixed(2)}`, cols.amt, y, { align: 'right' });
+          doc.text(entry.note || '', cols.note, y);
+          // draw vertical separators for this row
+          [75,135,250,370].forEach(x => doc.line(x, y-5, x, y+15));
+          y += 20;
+        });
+      }
 
       // final balance
-      const balance = customer.transactions.reduce((sum, e) => sum + (e.type === 'credit' ? e.amount : -e.amount), 0);
+      const balance = customer.transactions ? customer.transactions.reduce((sum, e) => sum + (e.type === 'credit' ? e.amount : -e.amount), 0) : 0;
       doc.setFont('helvetica', 'bold');
       doc.text(`Balance: Rs.${balance.toFixed(2)}`, cols.amt, y + 20, { align: 'right' });
 
