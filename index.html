@@ -235,27 +235,126 @@
 <!-- bottom bar removed as requested -->
 
 <script>
-  const customers = JSON.parse(localStorage.getItem('customers')) || [];
+  // Use IndexedDB for local backups so data can be restored if localStorage is cleared or lost
+  let customers = JSON.parse(localStorage.getItem('customers')) || [];
   console.log('Loaded customers:', customers);
 
-  // If no customers, add some sample data for testing
-  if (customers.length === 0) {
-    customers.push(
-      { name: 'John Doe', phone: '1234567890', transactions: [
-        { type: 'credit', amount: 1000, date: new Date().toISOString() },
-        { type: 'debit', amount: 500, date: new Date().toISOString() }
-      ]},
-      { name: 'Jane Smith', phone: '', transactions: [
-        { type: 'credit', amount: 2000, date: new Date().toISOString() }
-      ]}
-    );
-    saveData();
-    console.log('Added sample customers');
+  // IndexedDB helpers for backups
+  function openBackupDB() {
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) return reject(new Error('IndexedDB not supported'));
+      const req = indexedDB.open('angh_backups', 1);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('backups')) {
+          db.createObjectStore('backups', { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = e => resolve(e.target.result);
+      req.onerror = e => reject(e.target.error);
+    });
+  }
+
+  async function saveBackupToIDB(data) {
+    try {
+      const db = await openBackupDB();
+      const tx = db.transaction('backups', 'readwrite');
+      const store = tx.objectStore('backups');
+      const id = Date.now();
+      store.add({ id, created: new Date().toISOString(), data });
+      tx.oncomplete = () => {
+        // prune old backups
+        pruneBackups(db).catch(err => console.warn('Prune failed', err));
+      };
+      tx.onerror = () => console.warn('Backup transaction error', tx.error);
+    } catch (err) {
+      console.warn('Backup save failed (IDB):', err);
+    }
+  }
+
+  async function pruneBackups(db) {
+    const tx = db.transaction('backups', 'readwrite');
+    const store = tx.objectStore('backups');
+    const all = await new Promise((resolve, reject) => {
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result.sort((a,b) => b.id - a.id));
+      req.onerror = () => reject(req.error);
+    });
+    const keep = 10;
+    if (all.length > keep) {
+      const toDelete = all.slice(keep);
+      toDelete.forEach(item => store.delete(item.id));
+    }
+    return tx.complete;
+  }
+
+  async function getLatestBackup() {
+    try {
+      const db = await openBackupDB();
+      const tx = db.transaction('backups', 'readonly');
+      const store = tx.objectStore('backups');
+      const all = await new Promise((resolve, reject) => {
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      if (!all || all.length === 0) return null;
+      all.sort((a, b) => b.id - a.id);
+      return all[0];
+    } catch (err) {
+      console.warn('Get latest backup failed', err);
+      return null;
+    }
   }
 
   function saveData() {
     localStorage.setItem('customers', JSON.stringify(customers));
+    // also save a backup to IndexedDB (best-effort)
+    saveBackupToIDB(customers);
   }
+
+  // If no customers found in localStorage, try to restore from latest IndexedDB backup
+  (async function tryRestoreIfEmpty() {
+    try {
+      if (!customers || customers.length === 0) {
+        const latest = await getLatestBackup();
+        if (latest && latest.data && latest.data.length) {
+          customers = [];
+          latest.data.forEach(c => customers.push(c));
+          saveData();
+          console.log('Restored customers from local backup:', customers);
+          alert('Restored customer data from local device backup.');
+          renderCustomers();
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Restore attempt failed', err);
+    }
+
+    // if no backup or restore failed, proceed with original behaviour
+    if (customers.length === 0) {
+      customers.push(
+        { name: 'John Doe', phone: '1234567890', transactions: [
+          { type: 'credit', amount: 1000, date: new Date().toISOString() },
+          { type: 'debit', amount: 500, date: new Date().toISOString() }
+        ]},
+        { name: 'Jane Smith', phone: '', transactions: [
+          { type: 'credit', amount: 2000, date: new Date().toISOString() }
+        ]}
+      );
+      saveData();
+      console.log('Added sample customers');
+      renderCustomers();
+    } else {
+      renderCustomers();
+    }
+  })();
+
+  // Periodic backup (every 5 minutes) to reduce data loss window
+  try {
+    setInterval(() => saveBackupToIDB(customers), 5 * 60 * 1000);
+  } catch (e) { /* ignore in environments without timers */ }
 
   function exportDataCsv() {
     let csv = 'Customer Name,Phone,Credit Amount,Debit Amount,Balance\n';
@@ -566,10 +665,8 @@
     });
   }
 
-  renderCustomers();
-if ("serviceWorker" in navigator) {
-navigator.serviceWorker.register("sw.js");
-}
+  // renderCustomers is called during restore or after initial sample insertion
+
 </script>
 
 </body>
