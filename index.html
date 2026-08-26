@@ -135,7 +135,7 @@
       border-radius: 8px;
       display: none;
       flex-direction: column;
-      min-width: 120px;
+      min-width: 140px;
       z-index: 100;
       overflow: hidden;
     }
@@ -174,9 +174,11 @@
       border: 1px solid var(--glass-border);
       padding: 20px;
       border-radius: 10px;
-      max-width: 400px;
+      max-width: 480px;
       width: 90%;
       box-shadow: 0 4px 10px var(--shadow);
+      max-height: 80vh;
+      overflow: auto;
     }
     .bottom-bar {
       position: fixed;
@@ -196,6 +198,8 @@
       font-size: 1em;
       border-radius: 30px;
     }
+    .backup-item { display:flex; justify-content:space-between; gap:8px; align-items:center; padding:8px; border-radius:6px; border:1px solid var(--glass-border); margin:6px 0; }
+    .backup-actions button { margin-left:8px; }
   </style>
 </head>
 <body>
@@ -220,6 +224,8 @@
         <button id="exportCSV">Export CSV</button>
         <button id="exportJSON">Export JSON</button>
         <button id="importData">Import</button>
+        <button id="backupNow">Backup Now</button>
+        <button id="manageBackups">Manage Backups</button>
         <button id="toggleDarkMode">Dark Mode</button>
       </div>
     </div>
@@ -304,6 +310,65 @@
     } catch (err) {
       console.warn('Get latest backup failed', err);
       return null;
+    }
+  }
+
+  // List all backups
+  async function listBackups() {
+    try {
+      const db = await openBackupDB();
+      const tx = db.transaction('backups', 'readonly');
+      const store = tx.objectStore('backups');
+      const all = await new Promise((resolve, reject) => {
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result.sort((a,b) => b.id - a.id));
+        req.onerror = () => reject(req.error);
+      });
+      return all || [];
+    } catch (err) {
+      console.warn('List backups failed', err);
+      return [];
+    }
+  }
+
+  async function restoreBackup(id) {
+    try {
+      const db = await openBackupDB();
+      const tx = db.transaction('backups', 'readonly');
+      const store = tx.objectStore('backups');
+      const rec = await new Promise((resolve, reject) => {
+        const r = store.get(id);
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+      });
+      if (!rec) throw new Error('Backup not found');
+      customers = [];
+      rec.data.forEach(c => customers.push(c));
+      saveData();
+      renderCustomers();
+      alert('Restored backup from ' + new Date(rec.created).toLocaleString());
+      document.querySelector('.modal')?.remove();
+    } catch (err) {
+      alert('Restore failed: ' + err.message);
+      console.warn(err);
+    }
+  }
+
+  async function deleteBackup(id) {
+    try {
+      const db = await openBackupDB();
+      const tx = db.transaction('backups', 'readwrite');
+      const store = tx.objectStore('backups');
+      await new Promise((resolve, reject) => {
+        const r = store.delete(id);
+        r.onsuccess = () => resolve();
+        r.onerror = () => reject(r.error);
+      });
+      // refresh modal list
+      showBackupManagerModal();
+    } catch (err) {
+      alert('Delete failed: ' + err.message);
+      console.warn(err);
     }
   }
 
@@ -646,6 +711,11 @@
     e.target.value = '';
   });
 
+  document.getElementById('backupNow').addEventListener('click', () => {
+    saveBackupToIDB(customers).then(() => alert('Backup saved locally.')).catch(() => alert('Backup failed'));
+  });
+  document.getElementById('manageBackups').addEventListener('click', showBackupManagerModal);
+
   // dark mode support
   function applyDarkMode(enabled) {
     document.body.classList.toggle('dark', enabled);
@@ -665,7 +735,29 @@
     });
   }
 
-  // renderCustomers is called during restore or after initial sample insertion
+  // Backup manager UI
+  async function showBackupManagerModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    const backups = await listBackups();
+    let content = `<div class="modal-content"><h3>Local Backups</h3>`;
+    if (!backups || backups.length === 0) {
+      content += `<p>No backups found.</p>`;
+    } else {
+      content += `<div>`;
+      backups.forEach(b => {
+        const date = new Date(b.created).toLocaleString();
+        const count = Array.isArray(b.data) ? b.data.length : '-';
+        content += `<div class="backup-item"><div><strong>${date}</strong><div style="font-size:0.9em;color:var(--text-color);">Customers: ${count}</div></div><div class="backup-actions"><button onclick="(function(){restoreBackup(${b.id})})()">Restore</button><button onclick="(function(){deleteBackup(${b.id})})()">Delete</button></div></div>`;
+      });
+      content += `</div>`;
+    }
+    content += `<div style="margin-top:12px;"><button onclick="document.querySelector('.modal').remove()">Close</button></div></div>`;
+    modal.innerHTML = content;
+    document.body.appendChild(modal);
+  }
+
+  // dark mode already applied; renderCustomers is called during restore or after initial sample insertion
 
 </script>
 
